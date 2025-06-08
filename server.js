@@ -2,37 +2,74 @@ const express = require('express');
 const fs = require('fs').promises;
 const path = require('path');
 const cors = require('cors');
-const { createReadStream } = require('fs');
 const { watch } = require('fs');
 
-const app = express();
-const port = 3010;
-const promptsDir = path.join(__dirname, 'prompts');
+class PromptsServer {
+    constructor(port = 3010, promptsDir = 'prompts') {
+        this.app = express();
+        this.port = port;
+        this.promptsDir = path.join(__dirname, promptsDir);
+        this.cache = new Map();
+        this.sseClients = new Set();
+        this.watcher = null;
+        this.updateTimeout = null;
+        
+        this.setupMiddleware();
+        this.setupRoutes();
+    }
 
-// Configuration CORS
-app.use(cors());
-app.use(express.static(__dirname));
+    setupMiddleware() {
+        this.app.use(cors({
+            origin: true,
+            credentials: true
+        }));
+        this.app.use(express.static(__dirname));
+        this.app.use(express.json({ limit: '10mb' }));
+    }
 
-// Cache pour stocker les données et éviter les lectures répétées
-let promptsCache = null;
-let cacheTimestamp = null;
+    setupRoutes() {
+        this.app.get('/api/prompts', this.handleGetPrompts.bind(this));
+        this.app.get('/api/updates', this.handleSSE.bind(this));
+        this.app.post('/api/refresh', this.handleRefresh.bind(this));
+        
+        // Route de santé
+        this.app.get('/health', (req, res) => {
+            res.json({ 
+                status: 'healthy', 
+                categories: this.cache.size,
+                uptime: process.uptime()
+            });
+        });
+    }
 
-/**
- * Vérifie si le dossier prompts existe, sinon le crée
- */
-async function ensurePromptsDirectory() {
-    try {
-        await fs.access(promptsDir);
-    } catch (error) {
-        if (error.code === 'ENOENT') {
-            console.log('📁 Création du dossier prompts...');
-            await fs.mkdir(promptsDir, { recursive: true });
-            
-            // Créer un dossier exemple avec un prompt de démonstration
-            const exampleDir = path.join(promptsDir, 'exemples');
-            await fs.mkdir(exampleDir, { recursive: true });
-            
-            const examplePrompt = `# Prompt d'exemple
+    async ensurePromptsDirectory() {
+        try {
+            await fs.access(this.promptsDir);
+            console.log('📁 Dossier prompts trouvé');
+        } catch (error) {
+            if (error.code === 'ENOENT') {
+                console.log('📁 Création du dossier prompts...');
+                await this.createInitialStructure();
+            } else {
+                throw error;
+            }
+        }
+    }
+
+    async createInitialStructure() {
+        await fs.mkdir(this.promptsDir, { recursive: true });
+        
+        const exampleDir = path.join(this.promptsDir, 'exemples');
+        await fs.mkdir(exampleDir, { recursive: true });
+        
+        const exampleContent = this.getExamplePrompt();
+        await fs.writeFile(path.join(exampleDir, 'bienvenue.md'), exampleContent);
+        
+        console.log('✅ Structure initiale créée');
+    }
+
+    getExamplePrompt() {
+        return `# Prompt d'exemple
 
 Voici un exemple de prompt pour vous aider à démarrer.
 
@@ -43,235 +80,326 @@ Voici un exemple de prompt pour vous aider à démarrer.
 
 ## Utilisation
 Ce prompt sera automatiquement chargé dans votre interface web.`;
-
-            await fs.writeFile(path.join(exampleDir, 'bienvenue.md'), examplePrompt);
-            console.log('✅ Dossier prompts créé avec un exemple');
-        }
     }
-}
 
-/**
- * Lit récursivement la structure des dossiers et fichiers Markdown
- */
-async function readPromptsDirectory(currentDir) {
-    const categories = [];
-    
-    try {
-        const dirents = await fs.readdir(currentDir, { withFileTypes: true });
+    async readPromptsDirectory() {
+        const categories = [];
         
-        // Trier les entrées par nom pour un ordre cohérent
-        const sortedDirents = dirents.sort((a, b) => a.name.localeCompare(b.name));
-        
-        for (const dirent of sortedDirents) {
-            if (!dirent.isDirectory()) continue;
+        try {
+            const dirents = await fs.readdir(this.promptsDir, { withFileTypes: true });
+            const directories = dirents
+                .filter(dirent => dirent.isDirectory())
+                .sort((a, b) => a.name.localeCompare(b.name));
             
-            const categoryPath = path.join(currentDir, dirent.name);
-            const files = await readMarkdownFiles(categoryPath);
-            
-            if (files.length > 0) {
-                categories.push({
-                    category: dirent.name,
-                    files: files.sort((a, b) => a.name.localeCompare(b.name))
+            // Traitement parallèle des catégories avec limitation de concurrence
+            const concurrencyLimit = 5;
+            for (let i = 0; i < directories.length; i += concurrencyLimit) {
+                const batch = directories.slice(i, i + concurrencyLimit);
+                const batchResults = await Promise.allSettled(
+                    batch.map(dirent => this.processCategory(dirent))
+                );
+                
+                batchResults.forEach((result, index) => {
+                    if (result.status === 'fulfilled' && result.value) {
+                        categories.push(result.value);
+                    } else if (result.status === 'rejected') {
+                        console.warn(`⚠️ Erreur catégorie ${batch[index].name}:`, result.reason.message);
+                    }
                 });
             }
-        }
-    } catch (error) {
-        console.error(`❌ Erreur lors de la lecture du répertoire ${currentDir}:`, error.message);
-        throw error;
-    }
-    
-    return categories;
-}
-
-/**
- * Lit tous les fichiers Markdown d'un dossier
- */
-async function readMarkdownFiles(folderPath) {
-    const files = [];
-    
-    try {
-        const dirents = await fs.readdir(folderPath, { withFileTypes: true });
-        
-        for (const dirent of dirents) {
-            if (dirent.isFile() && dirent.name.endsWith('.md')) {
-                const filePath = path.join(folderPath, dirent.name);
-                
-                try {
-                    const content = await fs.readFile(filePath, 'utf8');
-                    const name = path.basename(dirent.name, '.md')
-                        .replace(/_/g, ' ')
-                        .replace(/-/g, ' ')
-                        .trim();
-                    
-                    files.push({ name, content });
-                } catch (readError) {
-                    console.warn(`⚠️  Impossible de lire le fichier ${filePath}:`, readError.message);
-                }
-            }
-        }
-    } catch (error) {
-        console.warn(`⚠️  Impossible de lire le dossier ${folderPath}:`, error.message);
-    }
-    
-    return files;
-}
-
-/**
- * Met à jour le cache des prompts
- */
-async function updateCache() {
-    try {
-        console.log('🔄 Mise à jour du cache des prompts...');
-        promptsCache = await readPromptsDirectory(promptsDir);
-        cacheTimestamp = Date.now();
-        console.log(`✅ Cache mis à jour: ${promptsCache.length} catégories trouvées`);
-        
-        // Envoyer les données mises à jour aux clients connectés via SSE
-        broadcastUpdate();
-    } catch (error) {
-        console.error('❌ Erreur lors de la mise à jour du cache:', error.message);
-        promptsCache = [];
-    }
-}
-
-/**
- * Surveillance des changements dans le dossier prompts
- */
-function watchPromptsDirectory() {
-    let timeout;
-    
-    try {
-        const watcher = watch(promptsDir, { recursive: true }, (eventType, filename) => {
-            if (filename && filename.endsWith('.md')) {
-                console.log(`📝 Changement détecté: ${eventType} - ${filename}`);
-                
-                // Débouncing: attendre 500ms avant de mettre à jour
-                clearTimeout(timeout);
-                timeout = setTimeout(updateCache, 500);
-            }
-        });
-        
-        console.log('👀 Surveillance des changements activée sur:', promptsDir);
-        
-        // Gérer l'arrêt propre
-        process.on('SIGINT', () => {
-            console.log('\n🛑 Arrêt du serveur...');
-            watcher.close();
-            process.exit(0);
-        });
-        
-    } catch (error) {
-        console.warn('⚠️  Impossible de surveiller les changements:', error.message);
-    }
-}
-
-// Stockage des connexions SSE pour les mises à jour en temps réel
-const sseClients = new Set();
-
-/**
- * Diffuse les mises à jour aux clients connectés
- */
-function broadcastUpdate() {
-    const data = JSON.stringify({
-        type: 'update',
-        data: promptsCache,
-        timestamp: cacheTimestamp
-    });
-    
-    sseClients.forEach(client => {
-        try {
-            client.write(`data: ${data}\n\n`);
         } catch (error) {
-            sseClients.delete(client);
-        }
-    });
-}
-
-// Routes API
-app.get('/api/prompts', async (req, res) => {
-    try {
-        // Si le cache est vide ou n'existe pas, le mettre à jour
-        if (!promptsCache) {
-            await updateCache();
+            console.error(`❌ Erreur lecture répertoire:`, error.message);
+            throw error;
         }
         
-        res.json({
-            data: promptsCache,
-            timestamp: cacheTimestamp,
-            count: promptsCache.length
-        });
-    } catch (error) {
-        console.error('❌ Erreur API /api/prompts:', error.message);
-        res.status(500).json({ 
-            error: 'Échec de la récupération des prompts',
-            message: error.message 
-        });
+        return categories;
     }
-});
 
-// Route pour les mises à jour en temps réel (Server-Sent Events)
-app.get('/api/updates', (req, res) => {
-    res.writeHead(200, {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-        'Access-Control-Allow-Origin': '*'
-    });
-    
-    // Envoyer les données actuelles immédiatement
-    if (promptsCache) {
-        const data = JSON.stringify({
+    async processCategory(dirent) {
+        const categoryPath = path.join(this.promptsDir, dirent.name);
+        const files = await this.readMarkdownFiles(categoryPath);
+        
+        if (files.length === 0) return null;
+        
+        return {
+            category: dirent.name,
+            files: files.sort((a, b) => a.name.localeCompare(b.name)),
+            lastModified: Date.now()
+        };
+    }
+
+    async readMarkdownFiles(folderPath) {
+        try {
+            const dirents = await fs.readdir(folderPath, { withFileTypes: true });
+            const markdownFiles = dirents.filter(
+                dirent => dirent.isFile() && dirent.name.endsWith('.md')
+            );
+            
+            // Lecture parallèle des fichiers
+            const filesPromises = markdownFiles.map(dirent => 
+                this.readSingleMarkdownFile(folderPath, dirent)
+            );
+            
+            const results = await Promise.allSettled(filesPromises);
+            return results
+                .filter(result => result.status === 'fulfilled' && result.value)
+                .map(result => result.value);
+                
+        } catch (error) {
+            console.warn(`⚠️ Impossible de lire le dossier ${folderPath}:`, error.message);
+            return [];
+        }
+    }
+
+    async readSingleMarkdownFile(folderPath, dirent) {
+        const filePath = path.join(folderPath, dirent.name);
+        
+        try {
+            const [content, stats] = await Promise.all([
+                fs.readFile(filePath, 'utf8'),
+                fs.stat(filePath)
+            ]);
+            
+            const name = this.formatFileName(dirent.name);
+            
+            return { 
+                name, 
+                content: content.trim(),
+                size: stats.size,
+                lastModified: stats.mtime.toISOString()
+            };
+        } catch (error) {
+            console.warn(`⚠️ Impossible de lire ${filePath}:`, error.message);
+            return null;
+        }
+    }
+
+    formatFileName(filename) {
+        return path.basename(filename, '.md')
+            .replace(/[_-]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    async updateCache() {
+        try {
+            console.log('🔄 Mise à jour du cache...');
+            const startTime = Date.now();
+            
+            const categories = await this.readPromptsDirectory();
+            
+            // Mise à jour atomique du cache
+            this.cache.clear();
+            categories.forEach((category, index) => {
+                this.cache.set(category.category, {
+                    ...category,
+                    index
+                });
+            });
+            
+            const duration = Date.now() - startTime;
+            console.log(`✅ Cache mis à jour: ${categories.length} catégories (${duration}ms)`);
+            
+            this.broadcastUpdate(categories);
+            return categories;
+        } catch (error) {
+            console.error('❌ Erreur mise à jour cache:', error.message);
+            return Array.from(this.cache.values());
+        }
+    }
+
+    setupFileWatcher() {
+        if (this.watcher) {
+            this.watcher.close();
+        }
+
+        try {
+            this.watcher = watch(this.promptsDir, { recursive: true }, (eventType, filename) => {
+                if (filename && filename.endsWith('.md')) {
+                    console.log(`📝 Changement détecté: ${eventType} - ${filename}`);
+                    this.debouncedUpdate();
+                }
+            });
+            
+            console.log('👀 Surveillance activée:', this.promptsDir);
+        } catch (error) {
+            console.warn('⚠️ Impossible de surveiller les changements:', error.message);
+        }
+    }
+
+    debouncedUpdate() {
+        clearTimeout(this.updateTimeout);
+        this.updateTimeout = setTimeout(() => {
+            this.updateCache();
+        }, 500);
+    }
+
+    broadcastUpdate(data = null) {
+        if (this.sseClients.size === 0) return;
+
+        const payload = {
+            type: 'update',
+            data: data || Array.from(this.cache.values()),
+            timestamp: Date.now()
+        };
+
+        const message = `data: ${JSON.stringify(payload)}\n\n`;
+        const deadClients = new Set();
+
+        this.sseClients.forEach(client => {
+            try {
+                client.write(message);
+            } catch (error) {
+                deadClients.add(client);
+            }
+        });
+
+        // Nettoyage des connexions mortes
+        deadClients.forEach(client => this.sseClients.delete(client));
+    }
+
+    async handleGetPrompts(req, res) {
+        try {
+            let data = Array.from(this.cache.values());
+            
+            if (data.length === 0) {
+                data = await this.updateCache();
+            }
+            
+            res.json({
+                data,
+                timestamp: Date.now(),
+                count: data.length,
+                cacheSize: this.cache.size
+            });
+        } catch (error) {
+            console.error('❌ Erreur API /api/prompts:', error.message);
+            res.status(500).json({ 
+                error: 'Échec de la récupération des prompts',
+                message: error.message 
+            });
+        }
+    }
+
+    handleSSE(req, res) {
+        res.writeHead(200, {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Headers': 'Cache-Control'
+        });
+
+        // Données initiales
+        const initialData = {
             type: 'initial',
-            data: promptsCache,
-            timestamp: cacheTimestamp
-        });
-        res.write(`data: ${data}\n\n`);
-    }
-    
-    // Ajouter le client à la liste
-    sseClients.add(res);
-    
-    // Nettoyer quand le client se déconnecte
-    req.on('close', () => {
-        sseClients.delete(res);
-    });
-});
+            data: Array.from(this.cache.values()),
+            timestamp: Date.now()
+        };
+        res.write(`data: ${JSON.stringify(initialData)}\n\n`);
 
-// Route pour forcer la mise à jour du cache
-app.post('/api/refresh', async (req, res) => {
-    try {
-        await updateCache();
-        res.json({ 
-            success: true, 
-            message: 'Cache mis à jour',
-            timestamp: cacheTimestamp 
-        });
-    } catch (error) {
-        res.status(500).json({ 
-            error: 'Échec de la mise à jour',
-            message: error.message 
+        // Heartbeat pour maintenir la connexion
+        const heartbeat = setInterval(() => {
+            try {
+                res.write(`data: ${JSON.stringify({ type: 'heartbeat', timestamp: Date.now() })}\n\n`);
+            } catch (error) {
+                clearInterval(heartbeat);
+                this.sseClients.delete(res);
+            }
+        }, 30000);
+
+        this.sseClients.add(res);
+
+        req.on('close', () => {
+            clearInterval(heartbeat);
+            this.sseClients.delete(res);
         });
     }
-});
 
-// Initialisation du serveur
-async function startServer() {
-    try {
-        await ensurePromptsDirectory();
-        await updateCache();
-        watchPromptsDirectory();
-        
-        app.listen(port, () => {
-            console.log(`🚀 Serveur démarré sur http://localhost:${port}`);
-            console.log(`📱 Interface web: http://localhost:${port}/index.html`);
-            console.log(`📂 Dossier prompts: ${promptsDir}`);
-            console.log(`📊 ${promptsCache.length} catégories chargées`);
-        });
-    } catch (error) {
-        console.error('❌ Erreur lors du démarrage du serveur:', error.message);
-        process.exit(1);
+    async handleRefresh(req, res) {
+        try {
+            const data = await this.updateCache();
+            res.json({ 
+                success: true, 
+                message: 'Cache mis à jour',
+                count: data.length,
+                timestamp: Date.now()
+            });
+        } catch (error) {
+            res.status(500).json({ 
+                error: 'Échec de la mise à jour',
+                message: error.message 
+            });
+        }
+    }
+
+    async start() {
+        try {
+            await this.ensurePromptsDirectory();
+            await this.updateCache();
+            this.setupFileWatcher();
+            
+            const server = this.app.listen(this.port, () => {
+                console.log(`🚀 Serveur démarré sur http://localhost:${this.port}`);
+                console.log(`📱 Interface web: http://localhost:${this.port}/index.html`);
+                console.log(`📂 Dossier prompts: ${this.promptsDir}`);
+                console.log(`📊 ${this.cache.size} catégories chargées`);
+            });
+
+            // Gestion propre de l'arrêt
+            this.setupGracefulShutdown(server);
+            
+            return server;
+        } catch (error) {
+            console.error('❌ Erreur démarrage serveur:', error.message);
+            process.exit(1);
+        }
+    }
+
+    setupGracefulShutdown(server) {
+        const shutdown = async (signal) => {
+            console.log(`\n🛑 Arrêt du serveur (${signal})...`);
+            
+            // Fermer les connexions SSE
+            this.sseClients.forEach(client => {
+                try {
+                    client.end();
+                } catch (error) {
+                    // Ignorer les erreurs de fermeture
+                }
+            });
+            this.sseClients.clear();
+            
+            // Fermer le watcher
+            if (this.watcher) {
+                this.watcher.close();
+            }
+            
+            // Fermer le serveur
+            server.close((err) => {
+                if (err) {
+                    console.error('❌ Erreur lors de la fermeture:', err.message);
+                    process.exit(1);
+                } else {
+                    console.log('✅ Serveur fermé proprement');
+                    process.exit(0);
+                }
+            });
+            
+            // Force l'arrêt après 10 secondes
+            setTimeout(() => {
+                console.log('⚠️ Arrêt forcé');
+                process.exit(1);
+            }, 10000);
+        };
+
+        process.on('SIGINT', () => shutdown('SIGINT'));
+        process.on('SIGTERM', () => shutdown('SIGTERM'));
     }
 }
 
-// Démarrer le serveur
-startServer();
+// Utilisation
+const server = new PromptsServer();
+server.start().catch(console.error);
+
+module.exports = PromptsServer;

@@ -4,8 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mes Prompts - Gestionnaire Intelligent</title>
+    <!-- Utilisation de Tailwind CSS pour un design moderne et réactif -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Intégration de la police Inter pour une typographie propre -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Icônes via Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <script>
+        // Configuration personnalisée de Tailwind CSS
         tailwind.config = {
             theme: {
                 extend: {
@@ -13,30 +22,35 @@
                         sans: ['Inter', 'system-ui', 'sans-serif'],
                     },
                     animation: {
-                        'fade-in': 'fadeIn 0.3s ease-in-out',
-                        'slide-down': 'slideDown 0.3s ease-out',
-                        'pulse-soft': 'pulse 2s ease-in-out infinite',
+                        'fade-in': 'fadeIn 0.5s ease-out forwards',
+                        'slide-down': 'slideDown 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+                        'float': 'float 6s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: 0, transform: 'translateY(20px)' },
+                            '100%': { opacity: 1, transform: 'translateY(0)' },
+                        },
+                        slideDown: {
+                            '0%': { maxHeight: '0px', opacity: 0 },
+                            '100%': { maxHeight: '2000px', opacity: 1 },
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        }
                     }
                 }
             }
         }
     </script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
     <style>
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        @keyframes slideDown {
-            from { max-height: 0; opacity: 0; }
-            to { max-height: 1000px; opacity: 1; }
-        }
-        
+        /* Styles CSS personnalisés pour des animations et effets plus fins */
         .category-content {
-            max-height: 0;
             overflow: hidden;
-            transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+            transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+            max-height: 0;
             opacity: 0;
         }
         
@@ -44,53 +58,77 @@
             max-height: 2000px;
             opacity: 1;
         }
-        
-        .prompt-item {
-            transform: translateX(-10px);
-            opacity: 0;
-            animation: fadeIn 0.3s ease-in-out forwards;
+
+        .prompt-card {
+            animation: fadeIn 0.5s ease-out forwards;
         }
         
-        .prompt-item:nth-child(even) {
-            animation-delay: 0.1s;
-        }
-        
-        .status-indicator {
-            transition: all 0.3s ease;
-        }
-        
+        /* Style pour l'animation de succès de copie */
         .copy-success {
-            animation: pulse 0.6s ease-in-out;
+            box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.3);
+            transform: scale(1.02);
+            transition: all 0.2s ease;
         }
-        
-        .glass-effect {
+
+        /* Effet de verre amélioré pour la barre de navigation */
+        .glass-header {
+            background-color: rgba(255, 255, 255, 0.8);
             backdrop-filter: blur(12px);
-            background: rgba(255, 255, 255, 0.9);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        /* Effets pour les cartes de catégorie */
+        .category-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .category-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        /* Gradient animé pour les cartes de catégorie */
+        .gradient-border {
+            background: linear-gradient(45deg, #3b82f6, #8b5cf6, #06b6d4, #10b981);
+            background-size: 300% 300%;
+            animation: gradient-shift 8s ease infinite;
+        }
+
+        @keyframes gradient-shift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
         }
     </style>
 </head>
-<body class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-    <!-- Header -->
-    <header class="glass-effect sticky top-0 z-40 border-b">
-        <div class="container mx-auto px-4 py-4">
-            <div class="flex items-center justify-between">
-                <h1 class="text-2xl md:text-3xl font-bold text-gray-800 flex items-center">
-                    <i class="fas fa-magic text-blue-600 mr-3"></i>
-                    Mes Prompts
-                </h1>
+
+<body class="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 font-sans text-gray-800">
+    <!-- Header: collant avec effet de verre pour un look moderne -->
+    <header class="glass-header sticky top-0 z-40">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Titre de l'application -->
+                <div class="flex items-center space-x-3">
+                     <div class="bg-gradient-to-r from-blue-600 to-purple-600 p-2 rounded-lg shadow-md">
+                        <i class="fas fa-bolt text-white animate-pulse"></i>
+                    </div>
+                    <h1 class="text-xl md:text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                        Mes Prompts
+                    </h1>
+                </div>
                 
                 <div class="flex items-center space-x-4">
-                    <!-- Indicateur de statut -->
+                    <!-- Indicateur de statut de connexion -->
                     <div id="status-indicator" class="flex items-center space-x-2 text-sm">
-                        <div class="w-3 h-3 rounded-full bg-green-500 status-indicator" id="connection-dot"></div>
-                        <span id="status-text" class="text-gray-600">En ligne</span>
+                        <div class="w-2.5 h-2.5 rounded-full bg-green-500 transition-all animate-pulse" id="connection-dot"></div>
+                        <span id="status-text" class="hidden sm:block text-gray-600 font-medium">En ligne</span>
                     </div>
                     
-                    <!-- Bouton refresh -->
+                    <!-- Bouton d'actualisation -->
                     <button id="refresh-btn" 
-                            class="p-2 rounded-lg hover:bg-blue-100 text-blue-600 transition-all duration-300"
-                            title="Actualiser">
+                            class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-white/50 text-gray-600 transition-all hover:scale-110"
+                            title="Actualiser les données">
                         <i class="fas fa-sync-alt"></i>
                     </button>
                 </div>
@@ -98,13 +136,14 @@
         </div>
     </header>
 
-    <!-- Contenu principal -->
-    <main class="container mx-auto px-4 py-8 max-w-6xl">
-        <!-- Statistiques -->
-        <div id="stats-bar" class="mb-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                <div class="flex items-center">
-                    <i class="fas fa-folder text-yellow-500 mr-3"></i>
+    <!-- Contenu principal de la page -->
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+        
+        <!-- Barre de statistiques avec un design épuré -->
+        <div id="stats-bar" class="mb-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+            <div class="bg-white/80 backdrop-blur-sm rounded-xl p-4 shadow-lg border border-l-4 border-l-yellow-400 hover:shadow-xl transition-all">
+                <div class="flex items-center space-x-4">
+                    <i class="fas fa-folder text-lg text-yellow-500 animate-float"></i>
                     <div>
                         <p class="text-sm text-gray-500">Catégories</p>
                         <p class="text-xl font-semibold text-gray-800" id="categories-count">-</p>
@@ -112,9 +151,9 @@
                 </div>
             </div>
             
-            <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                <div class="flex items-center">
-                    <i class="fas fa-file-alt text-blue-500 mr-3"></i>
+            <div class="bg-white/80 backdrop-blur-sm rounded-xl p-4 shadow-lg border border-l-4 border-l-blue-400 hover:shadow-xl transition-all">
+                <div class="flex items-center space-x-4">
+                    <i class="fas fa-file-alt text-lg text-blue-500 animate-float" style="animation-delay: 1s;"></i>
                     <div>
                         <p class="text-sm text-gray-500">Prompts</p>
                         <p class="text-xl font-semibold text-gray-800" id="prompts-count">-</p>
@@ -122,9 +161,9 @@
                 </div>
             </div>
             
-            <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                <div class="flex items-center">
-                    <i class="fas fa-clock text-green-500 mr-3"></i>
+            <div class="bg-white/80 backdrop-blur-sm rounded-xl p-4 shadow-lg border border-l-4 border-l-green-400 hover:shadow-xl transition-all">
+                <div class="flex items-center space-x-4">
+                    <i class="fas fa-clock text-lg text-green-500 animate-float" style="animation-delay: 2s;"></i>
                     <div>
                         <p class="text-sm text-gray-500">Dernière MAJ</p>
                         <p class="text-sm font-medium text-gray-800" id="last-update">-</p>
@@ -133,64 +172,59 @@
             </div>
         </div>
 
-        <!-- Barre de recherche -->
-        <div class="mb-8">
-            <div class="relative max-w-md mx-auto">
+        <!-- Barre de recherche centrée et stylisée -->
+        <div class="mb-8 md:mb-12">
+            <div class="relative max-w-lg mx-auto">
+                <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
                 <input type="text" 
                        id="search-input"
-                       placeholder="Rechercher un prompt..."
-                       class="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300">
-                <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                       placeholder="Rechercher un prompt par mot-clé..."
+                       class="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 bg-white/80 backdrop-blur-sm shadow-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-300 focus:ring-opacity-50 transition-all">
             </div>
         </div>
 
-        <!-- Conteneur des prompts -->
-        <div id="prompts-container" class="space-y-6">
-            <div class="text-center py-12">
-                <div class="animate-pulse-soft">
-                    <i class="fas fa-spinner fa-spin text-4xl text-blue-500 mb-4"></i>
-                    <p class="text-gray-500">Chargement des prompts...</p>
+        <!-- Conteneur principal pour les prompts, les erreurs ou les messages -->
+        <div id="main-content-area" class="max-w-7xl mx-auto">
+            <!-- Conteneur pour afficher les listes de prompts -->
+            <div id="prompts-container" class="space-y-6">
+                <!-- État de chargement initial -->
+                <div class="text-center py-16">
+                    <div class="animate-pulse">
+                        <i class="fas fa-spinner fa-spin text-4xl text-blue-500"></i>
+                        <p class="mt-4 text-gray-500">Chargement des prompts...</p>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Message d'erreur -->
-        <div id="error-container" class="hidden">
-            <div class="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
-                <i class="fas fa-exclamation-triangle text-red-500 text-3xl mb-4"></i>
-                <h3 class="text-lg font-semibold text-red-800 mb-2">Erreur de connexion</h3>
-                <p class="text-red-600 mb-4" id="error-message"></p>
-                <button id="retry-btn" class="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors">
-                    <i class="fas fa-redo mr-2"></i>Réessayer
-                </button>
+            <!-- Conteneur pour les messages d'erreur -->
+            <div id="error-container" class="hidden">
+                <div class="bg-red-50/80 backdrop-blur-sm border border-red-200 rounded-xl p-8 text-center shadow-lg">
+                    <i class="fas fa-exclamation-triangle text-red-500 text-4xl mb-4"></i>
+                    <h3 class="text-lg font-semibold text-red-800 mb-2">Erreur de Connexion</h3>
+                    <p class="text-red-700 mb-6" id="error-message"></p>
+                    <button id="retry-btn" class="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors font-semibold shadow-lg">
+                        <i class="fas fa-redo mr-2"></i>Réessayer
+                    </button>
+                </div>
             </div>
-        </div>
 
-        <!-- Message vide -->
-        <div id="empty-container" class="hidden">
-            <div class="bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl p-12 text-center">
-                <i class="fas fa-folder-open text-gray-400 text-5xl mb-4"></i>
-                <h3 class="text-xl font-semibold text-gray-600 mb-2">Aucun prompt trouvé</h3>
-                <p class="text-gray-500 mb-6">Créez des dossiers dans le répertoire 'prompts' et ajoutez vos fichiers .md</p>
-                <div class="bg-white rounded-lg p-4 max-w-md mx-auto text-left">
-                    <p class="text-sm text-gray-600 font-mono">
-                        prompts/<br>
-                        ├── categorie1/<br>
-                        │   └── mon_prompt.md<br>
-                        └── categorie2/<br>
-                        &nbsp;&nbsp;&nbsp;&nbsp;└── autre_prompt.md
-                    </p>
+            <!-- Conteneur pour l'état vide (aucun prompt trouvé) -->
+            <div id="empty-container" class="hidden">
+                <div class="bg-white/80 backdrop-blur-sm border-2 border-dashed border-gray-300 rounded-xl p-8 sm:p-12 text-center shadow-lg">
+                    <i class="fas fa-folder-open text-gray-400 text-5xl mb-6 animate-float"></i>
+                    <h3 class="text-xl font-semibold text-gray-700 mb-2">Aucun prompt trouvé</h3>
+                    <p class="text-gray-500 mb-6 max-w-md mx-auto">Il semble que votre recherche n'ait donné aucun résultat ou que le dossier de prompts soit vide.</p>
                 </div>
             </div>
         </div>
     </main>
 
-    <!-- Toast de notification -->
-    <div id="toast" class="fixed bottom-4 right-4 z-50 transform translate-y-full transition-all duration-300 ease-in-out">
-        <div class="bg-white shadow-lg rounded-lg p-4 border-l-4 border-green-500 max-w-sm">
+    <!-- Notification "Toast" pour la copie -->
+    <div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 transform translate-y-[200%] transition-transform duration-300 ease-in-out">
+        <div class="bg-gray-800 text-white shadow-xl rounded-full py-3 px-6 backdrop-blur-sm">
             <div class="flex items-center">
-                <i class="fas fa-check-circle text-green-500 mr-3"></i>
-                <p class="text-gray-800 font-medium">Contenu copié dans le presse-papiers!</p>
+                <i class="fas fa-check-circle text-green-400 mr-2"></i>
+                <p class="font-medium text-sm">Copié dans le presse-papiers !</p>
             </div>
         </div>
     </div>
@@ -198,46 +232,48 @@
     <script>
         class PromptsApp {
             constructor() {
-                this.cache = null;
-                this.filteredData = null;
-                this.eventSource = null;
-                this.searchTerm = '';
+                this.cache = null; // Données brutes de l'API
+                this.filteredData = null; // Données filtrées par la recherche
+                this.eventSource = null; // Source pour les Server-Sent Events
+                this.searchTerm = ''; // Terme de recherche actuel
                 
+                // Démarrage de l'application
                 this.init();
             }
             
             init() {
                 this.setupEventListeners();
-                this.connectToUpdates();
-                this.loadPrompts();
+                this.connectToUpdates(); // Tente la connexion SSE en premier
             }
             
             setupEventListeners() {
-                // Recherche
+                // Écouteur pour la barre de recherche
                 const searchInput = document.getElementById('search-input');
                 searchInput.addEventListener('input', (e) => {
                     this.searchTerm = e.target.value.toLowerCase();
                     this.filterAndRender();
                 });
                 
-                // Bouton refresh
-                document.getElementById('refresh-btn').addEventListener('click', () => {
-                    this.refreshData();
-                });
+                // Bouton d'actualisation manuelle
+                document.getElementById('refresh-btn').addEventListener('click', () => this.refreshData());
                 
-                // Bouton retry
-                document.getElementById('retry-btn').addEventListener('click', () => {
-                    this.loadPrompts();
-                });
+                // Bouton de re-tentative en cas d'erreur
+                document.getElementById('retry-btn').addEventListener('click', () => this.connectToUpdates());
             }
             
+            // Connexion pour les mises à jour en temps réel
             connectToUpdates() {
                 if (this.eventSource) {
                     this.eventSource.close();
                 }
+
+                this.showLoading();
                 
                 try {
+                    // Endpoint pour les mises à jour Server-Sent Events
                     this.eventSource = new EventSource('/api/updates');
+                    
+                    this.eventSource.onopen = () => this.updateStatus(true);
                     
                     this.eventSource.onmessage = (event) => {
                         const data = JSON.parse(event.data);
@@ -245,82 +281,82 @@
                             this.cache = data.data;
                             this.updateStats(data.timestamp);
                             this.filterAndRender();
-                            this.updateStatus('online');
+                            this.updateStatus(true);
                         }
                     };
                     
                     this.eventSource.onerror = () => {
-                        this.updateStatus('offline');
-                        setTimeout(() => this.connectToUpdates(), 5000);
+                        this.updateStatus(false);
+                        this.eventSource.close();
+                        console.warn('SSE failed. Falling back to fetch.');
+                        // Si SSE échoue, on utilise un simple fetch
+                        this.loadPrompts(); 
                     };
                 } catch (error) {
-                    console.warn('Server-Sent Events not supported, falling back to polling');
-                    this.startPolling();
+                    console.error('SSE connection error:', error);
+                    this.loadPrompts(); // Fallback si SSE n'est pas supporté
                 }
             }
             
-            startPolling() {
-                setInterval(() => {
-                    this.loadPrompts(false);
-                }, 10000); // Poll every 10 seconds
-            }
-            
+            // Chargement classique des données via fetch
             async loadPrompts(showLoading = true) {
-                if (showLoading) {
-                    this.showLoading();
-                }
+                if (showLoading) this.showLoading();
                 
                 try {
                     const response = await fetch('/api/prompts');
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                    }
+                    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                     
                     const result = await response.json();
                     this.cache = result.data;
                     this.updateStats(result.timestamp);
                     this.filterAndRender();
-                    this.updateStatus('online');
+                    this.updateStatus(true);
                     
                 } catch (error) {
                     console.error('Erreur lors du chargement:', error);
                     this.showError(error.message);
-                    this.updateStatus('offline');
+                    this.updateStatus(false);
                 }
             }
             
+            // Forcer une nouvelle analyse des fichiers côté serveur
             async refreshData() {
-                const refreshBtn = document.getElementById('refresh-btn');
-                const icon = refreshBtn.querySelector('i');
-                
+                const icon = document.getElementById('refresh-btn').querySelector('i');
                 icon.classList.add('fa-spin');
                 
                 try {
                     await fetch('/api/refresh', { method: 'POST' });
-                    await this.loadPrompts(false);
                 } catch (error) {
                     console.error('Erreur lors du refresh:', error);
+                    this.showToast('Erreur lors de l\'actualisation', 'error');
                 } finally {
-                    icon.classList.remove('fa-spin');
+                    setTimeout(() => icon.classList.remove('fa-spin'), 500);
                 }
             }
             
+            // Filtre les données en fonction de la recherche et lance le rendu
             filterAndRender() {
                 if (!this.cache) return;
                 
-                this.filteredData = this.cache.map(category => ({
-                    ...category,
-                    files: category.files.filter(file => 
-                        file.name.toLowerCase().includes(this.searchTerm) ||
-                        file.content.toLowerCase().includes(this.searchTerm)
-                    )
-                })).filter(category => category.files.length > 0);
+                if (this.searchTerm.trim() === '') {
+                    this.filteredData = this.cache;
+                } else {
+                    this.filteredData = this.cache.map(category => ({
+                        ...category,
+                        files: category.files.filter(file => 
+                            file.name.toLowerCase().includes(this.searchTerm) ||
+                            file.content.toLowerCase().includes(this.searchTerm)
+                        )
+                    })).filter(category => category.files.length > 0);
+                }
                 
                 this.render();
             }
             
+            // Construit l'interface à partir des données filtrées - NOUVELLE VERSION AVEC GRILLE
             render() {
                 const container = document.getElementById('prompts-container');
+                container.innerHTML = '';
                 
                 if (!this.filteredData || this.filteredData.length === 0) {
                     this.showEmpty();
@@ -329,179 +365,210 @@
                 
                 this.hideMessages();
                 
-                container.innerHTML = '';
+                // Créer une grille de catégories
+                const categoriesGrid = document.createElement('div');
+                categoriesGrid.className = 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6';
                 
-                this.filteredData.forEach((category, categoryIndex) => {
-                    const categoryDiv = this.createCategoryElement(category, categoryIndex);
-                    container.appendChild(categoryDiv);
+                this.filteredData.forEach((category, index) => {
+                    const categoryCard = this.createCategoryCard(category, index);
+                    categoriesGrid.appendChild(categoryCard);
                 });
                 
-                // Animation progressive
-                setTimeout(() => {
-                    document.querySelectorAll('.prompt-item').forEach((item, index) => {
-                        item.style.animationDelay = `${index * 0.05}s`;
-                    });
-                }, 50);
+                container.appendChild(categoriesGrid);
             }
             
-            createCategoryElement(category, categoryIndex) {
-                const categoryDiv = document.createElement('div');
-                categoryDiv.className = 'bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all duration-300';
+            // NOUVELLE FONCTION: Créer une carte de catégorie
+            createCategoryCard(category, index) {
+                const categoryCard = document.createElement('div');
+                categoryCard.className = 'category-card bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200/50 overflow-hidden transition-all hover:shadow-2xl';
+                categoryCard.style.animationDelay = `${index * 0.1}s`;
                 
-                // Header de la catégorie
+                // Header de la catégorie avec design moderne
                 const header = document.createElement('div');
-                header.className = 'flex justify-between items-center p-4 cursor-pointer bg-gradient-to-r from-gray-50 to-white hover:from-blue-50 hover:to-blue-50 transition-all duration-300 border-b border-gray-100';
-                header.innerHTML = `
-                    <h2 class="text-lg font-semibold text-gray-700 flex items-center">
-                        <i class="fas fa-folder-open text-yellow-500 mr-3"></i>
-                        ${category.category}
-                        <span class="ml-2 bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">${category.files.length}</span>
-                    </h2>
-                    <i class="fas fa-chevron-down text-gray-400 transition-transform duration-300 transform" id="chevron-${categoryIndex}"></i>
+                header.className = 'relative p-6 bg-gradient-to-r from-blue-500/10 to-purple-500/10 border-b border-gray-100';
+                
+                // Badge avec gradient animé
+                const gradientBadge = document.createElement('div');
+                gradientBadge.className = 'absolute -top-1 -right-1 w-8 h-8 gradient-border rounded-full p-0.5';
+                gradientBadge.innerHTML = `
+                    <div class="w-full h-full bg-white rounded-full flex items-center justify-center">
+                        <span class="text-xs font-bold text-gray-700">${category.files.length}</span>
+                    </div>
                 `;
                 
-                // Contenu de la catégorie
+                header.innerHTML = `
+                    <div class="flex items-center space-x-3 mb-2">
+                        <div class="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center shadow-lg">
+                            <i class="fas fa-folder text-white text-lg"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h2 class="font-bold text-lg text-gray-800 truncate">${category.category}</h2>
+                            <p class="text-sm text-gray-500">${category.files.length} prompt${category.files.length > 1 ? 's' : ''}</p>
+                        </div>
+                    </div>
+                `;
+                
+                header.appendChild(gradientBadge);
+                
+                // Contenu de la catégorie (liste des prompts)
                 const content = document.createElement('div');
-                content.className = 'category-content';
-                content.id = `category-content-${categoryIndex}`;
+                content.className = 'p-4 max-h-64 overflow-y-auto space-y-2';
                 
                 category.files.forEach((file, fileIndex) => {
-                    const promptDiv = document.createElement('div');
-                    promptDiv.className = 'prompt-item flex justify-between items-center p-4 border-b last:border-b-0 border-gray-50 hover:bg-blue-50 transition-all duration-200';
-                    promptDiv.innerHTML = `
-                        <div class="flex-1">
-                            <h3 class="font-medium text-gray-800 mb-1">${file.name}</h3>
-                            <p class="text-sm text-gray-500 truncate max-w-md">${file.content.substring(0, 100)}${file.content.length > 100 ? '...' : ''}</p>
-                        </div>
-                        <button class="copy-button ml-4 p-3 rounded-lg hover:bg-blue-100 text-blue-600 transition-all duration-300 hover:scale-110"
-                                data-content="${encodeURIComponent(file.content)}"
-                                title="Copier le prompt">
-                            <i class="fas fa-copy"></i>
-                        </button>
-                    `;
-                    content.appendChild(promptDiv);
+                    const promptItem = this.createPromptItem(file, fileIndex);
+                    content.appendChild(promptItem);
                 });
                 
-                categoryDiv.appendChild(header);
-                categoryDiv.appendChild(content);
+                // Footer avec bouton d'action
+                const footer = document.createElement('div');
+                footer.className = 'p-4 bg-gray-50/50 border-t border-gray-100';
+                footer.innerHTML = `
+                    <button class="expand-btn w-full py-2 px-4 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg font-medium transition-all hover:shadow-lg hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
+                        <i class="fas fa-eye mr-2"></i>Voir tous les prompts
+                    </button>
+                `;
                 
-                // Event listener pour le toggle
-                header.addEventListener('click', () => {
-                    const chevron = document.getElementById(`chevron-${categoryIndex}`);
-                    if (content.classList.contains('expanded')) {
-                        content.classList.remove('expanded');
-                        chevron.classList.remove('rotate-180');
-                    } else {
-                        content.classList.add('expanded');
-                        chevron.classList.add('rotate-180');
-                    }
+                categoryCard.appendChild(header);
+                categoryCard.appendChild(content);
+                categoryCard.appendChild(footer);
+                
+                // Événement pour le bouton d'expansion
+                const expandBtn = footer.querySelector('.expand-btn');
+                expandBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.toggleCategoryExpansion(categoryCard, content);
                 });
                 
-                // Event listeners pour les boutons de copie
-                content.querySelectorAll('.copy-button').forEach(button => {
-                    button.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        const content = decodeURIComponent(button.dataset.content);
-                        this.copyToClipboard(content, button);
-                    });
-                });
-                
-                return categoryDiv;
+                return categoryCard;
             }
             
-            async copyToClipboard(text, button) {
+            // NOUVELLE FONCTION: Créer un élément de prompt dans la carte
+            createPromptItem(file, index) {
+                const promptItem = document.createElement('div');
+                promptItem.className = 'group flex items-center p-3 bg-white/70 rounded-lg border border-gray-100 cursor-pointer transition-all hover:shadow-md hover:border-blue-300 hover:bg-blue-50/50';
+                promptItem.style.animationDelay = `${index * 0.05}s`;
+                promptItem.title = "Cliquez pour copier";
+                
+                promptItem.innerHTML = `
+                    <div class="flex-1 min-w-0 mr-3">
+                        <h4 class="font-medium text-gray-800 text-sm truncate">${file.name}</h4>
+                        <p class="text-xs text-gray-500 truncate mt-1">${file.content.substring(0, 60)}${file.content.length > 60 ? '...' : ''}</p>
+                    </div>
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 group-hover:bg-blue-100 transition-colors">
+                            <i class="fas fa-copy text-gray-400 group-hover:text-blue-600 text-xs"></i>
+                        </div>
+                    </div>
+                `;
+                
+                promptItem.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.copyToClipboard(file.content, promptItem);
+                });
+                
+                return promptItem;
+            }
+            
+            // NOUVELLE FONCTION: Gérer l'expansion des catégories
+            toggleCategoryExpansion(cardElement, contentElement) {
+                const isExpanded = contentElement.classList.contains('expanded');
+                const expandBtn = cardElement.querySelector('.expand-btn');
+                
+                if (isExpanded) {
+                    contentElement.classList.remove('expanded', 'max-h-96');
+                    contentElement.classList.add('max-h-64');
+                    expandBtn.innerHTML = '<i class="fas fa-eye mr-2"></i>Voir tous les prompts';
+                } else {
+                    contentElement.classList.add('expanded', 'max-h-96');
+                    contentElement.classList.remove('max-h-64');
+                    expandBtn.innerHTML = '<i class="fas fa-eye-slash mr-2"></i>Réduire';
+                }
+            }
+            
+            // Fonction pour copier du texte dans le presse-papiers
+            async copyToClipboard(text, element) {
                 try {
-                    if (navigator.clipboard && window.isSecureContext) {
-                        await navigator.clipboard.writeText(text);
-                    } else {
-                        // Fallback pour les environnements non-sécurisés
-                        const textarea = document.createElement('textarea');
-                        textarea.value = text;
-                        document.body.appendChild(textarea);
-                        textarea.select();
-                        document.execCommand('copy');
-                        document.body.removeChild(textarea);
-                    }
-                    
-                    this.showToast();
-                    this.animateCopySuccess(button);
-                    
-                } catch (error) {
-                    console.error('Erreur lors de la copie:', error);
+                    await navigator.clipboard.writeText(text);
+                    this.showToast('Copié dans le presse-papiers !');
+                    this.animateCopySuccess(element);
+                } catch (err) {
+                    console.error('Erreur de copie:', err);
                     this.showToast('Erreur lors de la copie', 'error');
                 }
             }
             
-            animateCopySuccess(button) {
-                const icon = button.querySelector('i');
+            // Animation de succès de copie
+            animateCopySuccess(element) {
+                const icon = element.querySelector('i');
                 const originalClass = icon.className;
                 
+                // Changement visuel immédiat
                 icon.className = 'fas fa-check text-green-500';
-                button.classList.add('copy-success');
+                element.classList.add('copy-success');
                 
+                // Retour à l'état initial après un délai
                 setTimeout(() => {
                     icon.className = originalClass;
-                    button.classList.remove('copy-success');
-                }, 1000);
+                    element.classList.remove('copy-success');
+                }, 1200);
             }
             
-            showToast(message = 'Contenu copié dans le presse-papiers!', type = 'success') {
+            // Affichage de la notification toast
+            showToast(message = 'Action réussie !', type = 'success') {
                 const toast = document.getElementById('toast');
+                const toastContent = toast.querySelector('div');
                 const icon = toast.querySelector('i');
                 const text = toast.querySelector('p');
+
+                toastContent.className = type === 'success' 
+                    ? 'bg-gray-800 text-white shadow-xl rounded-full py-3 px-6 backdrop-blur-sm flex items-center' 
+                    : 'bg-red-600 text-white shadow-xl rounded-full py-3 px-6 backdrop-blur-sm flex items-center';
                 
-                if (type === 'success') {
-                    icon.className = 'fas fa-check-circle text-green-500 mr-3';
-                    toast.querySelector('div').className = 'bg-white shadow-lg rounded-lg p-4 border-l-4 border-green-500 max-w-sm';
-                } else {
-                    icon.className = 'fas fa-exclamation-circle text-red-500 mr-3';
-                    toast.querySelector('div').className = 'bg-white shadow-lg rounded-lg p-4 border-l-4 border-red-500 max-w-sm';
-                }
-                
+                icon.className = type === 'success' 
+                    ? 'fas fa-check-circle text-green-400 mr-2' 
+                    : 'fas fa-exclamation-circle text-white mr-2';
+
                 text.textContent = message;
                 
-                toast.style.transform = 'translateY(0)';
+                toast.style.transform = 'translate(-50%, 0)';
                 setTimeout(() => {
-                    toast.style.transform = 'translateY(100%)';
+                    toast.style.transform = 'translate(-50%, 200%)';
                 }, 3000);
             }
             
+            // Mettre à jour les statistiques
             updateStats(timestamp) {
                 if (!this.cache) return;
-                
-                const categoriesCount = this.cache.length;
-                const promptsCount = this.cache.reduce((sum, cat) => sum + cat.files.length, 0);
-                const lastUpdate = timestamp ? new Date(timestamp).toLocaleTimeString('fr-FR') : '-';
-                
-                document.getElementById('categories-count').textContent = categoriesCount;
-                document.getElementById('prompts-count').textContent = promptsCount;
-                document.getElementById('last-update').textContent = lastUpdate;
+                document.getElementById('categories-count').textContent = this.cache.length;
+                document.getElementById('prompts-count').textContent = this.cache.reduce((sum, cat) => sum + cat.files.length, 0);
+                document.getElementById('last-update').textContent = new Date(timestamp).toLocaleTimeString('fr-FR');
             }
             
-            updateStatus(status) {
+            // Mettre à jour l'indicateur de statut
+            updateStatus(isOnline) {
                 const dot = document.getElementById('connection-dot');
                 const text = document.getElementById('status-text');
                 
-                if (status === 'online') {
-                    dot.className = 'w-3 h-3 rounded-full bg-green-500 status-indicator';
+                if (isOnline) {
+                    dot.classList.remove('bg-red-500');
+                    dot.classList.add('bg-green-500');
                     text.textContent = 'En ligne';
-                    text.className = 'text-gray-600';
                 } else {
-                    dot.className = 'w-3 h-3 rounded-full bg-red-500 status-indicator animate-pulse';
+                    dot.classList.remove('bg-green-500');
+                    dot.classList.add('bg-red-500');
                     text.textContent = 'Hors ligne';
-                    text.className = 'text-red-600';
                 }
             }
             
+            // Afficher les différents états de l'interface
             showLoading() {
                 document.getElementById('prompts-container').innerHTML = `
-                    <div class="text-center py-12">
-                        <div class="animate-pulse-soft">
-                            <i class="fas fa-spinner fa-spin text-4xl text-blue-500 mb-4"></i>
-                            <p class="text-gray-500">Chargement des prompts...</p>
+                    <div class="text-center py-16">
+                        <div class="animate-pulse">
+                            <i class="fas fa-spinner fa-spin text-4xl text-blue-500"></i>
+                            <p class="mt-4 text-gray-500">Chargement des prompts...</p>
                         </div>
-                    </div>
-                `;
+                    </div>`;
                 this.hideMessages();
             }
             
@@ -524,7 +591,7 @@
             }
         }
         
-        // Initialiser l'application quand la page est chargée
+        // Initialiser l'application une fois le DOM chargé
         document.addEventListener('DOMContentLoaded', () => {
             new PromptsApp();
         });
