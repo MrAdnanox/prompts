@@ -120,20 +120,13 @@ def example():
 
 ## 📦 Deployment
 
-### Production
+To start the production server:
 
 ```bash
 npm start
 ```
 
-### Environment Variables
-
-Create a `.env` file at the project root:
-
-```env
-PORT=3010
-NODE_ENV=production
-```
+The application will be available at `http://localhost:3010`
 
 ## 🤝 Contributing
 
